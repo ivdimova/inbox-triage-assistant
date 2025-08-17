@@ -46,7 +46,7 @@ class EmailClusterer:
         return texts
     
     def _group_emails_by_cluster(self, emails: List[EmailMessage], 
-                                labels: np.ndarray) -> Dict[int, List[EmailMessage]]:
+                                labels: List[int]) -> Dict[int, List[EmailMessage]]:
         """Group emails by their cluster labels."""
         clusters = {}
         for email, label in zip(emails, labels):
