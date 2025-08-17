@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail Inbox Triage</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; color: white; margin-bottom: 30px; }
+        .login-form { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; }
+        input, select { 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid #e1e5e9; 
+            border-radius: 8px; 
+            font-size: 16px;
+        }
+        input:focus, select:focus { 
+            outline: none; 
+            border-color: #667eea; 
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .btn { 
+            background: #667eea; 
+            color: white; 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 16px;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        .btn:hover { background: #5a6fd8; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .loading { display: none; text-align: center; margin: 20px 0; }
+        .clusters-container { display: none; }
+        .cluster { 
+            background: white; 
+            margin: 20px 0; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .cluster-header { 
+            background: #f8f9fa; 
+            padding: 20px; 
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+        .cluster-title { font-size: 18px; font-weight: 600; margin-bottom: 5px; }
+        .cluster-description { color: #666; font-size: 14px; }
+        .archive-btn { 
+            background: #dc3545; 
+            color: white; 
+            padding: 8px 16px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer;
+            margin-left: auto;
+        }
+        .archive-btn:hover { background: #c82333; }
+        .emails-table { width: 100%; border-collapse: collapse; }
+        .emails-table th, .emails-table td { 
+            padding: 12px; 
+            text-align: left; 
+            border-bottom: 1px solid #e9ecef;
+        }
+        .emails-table th { background: #f8f9fa; font-weight: 600; }
+        .emails-table tr:hover { background: #f8f9fa; }
+        .sender { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+        .subject { font-weight: 500; }
+        .preview { color: #666; font-size: 14px; max-width: 250px; }
+        .error { color: #dc3545; background: #f8d7da; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .success { color: #155724; background: #d4edda; padding: 10px; border-radius: 4px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📧 Gmail Inbox Triage</h1>
+            <p>Cluster your emails into actionable groups</p>
+        </div>
+
+        <div id="login-section" class="login-form">
+            <h2>Connect to Gmail</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Gmail Address:</label>
+                    <input type="email" id="email" name="email" required 
+                           placeholder="your.email@gmail.com">
+                </div>
+                <div class="form-group">
+                    <label for="password">App Password:</label>
+                    <input type="password" id="password" name="password" required 
+                           placeholder="16-character app password">
+                </div>
+                <div class="form-group">
+                    <label for="clusters">Number of Clusters:</label>
+                    <select id="clusters" name="clusters">
+                        <option value="3">3 clusters</option>
+                        <option value="4">4 clusters</option>
+                        <option value="5" selected>5 clusters</option>
+                        <option value="6">6 clusters</option>
+                        <option value="7">7 clusters</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="count">Number of Emails:</label>
+                    <select id="count" name="count">
+                        <option value="20">20 emails</option>
+                        <option value="50" selected>50 emails</option>
+                        <option value="100">100 emails</option>
+                        <option value="200">200 emails</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Analyze Inbox</button>
+            </form>
+            
+            <div id="loading" class="loading">
+                <p>🔄 Connecting to Gmail and analyzing emails...</p>
+            </div>
+            
+            <div id="error-message"></div>
+        </div>
+
+        <div id="clusters-section" class="clusters-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="color: white;">📊 Email Clusters</h2>
+                <button id="disconnect-btn" class="btn" style="width: auto; background: #6c757d;">
+                    Disconnect
+                </button>
+            </div>
+            <div id="clusters-list"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentClusters = [];
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = {
+                email: formData.get('email'),
+                password: formData.get('password'),
+                clusters: formData.get('clusters'),
+                count: formData.get('count')
+            };
+            
+            document.getElementById('loading').style.display = 'block';
+            document.querySelector('.btn').disabled = true;
+            document.getElementById('error-message').innerHTML = '';
+            
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentClusters = result.clusters;
+                    displayClusters(result.clusters);
+                    document.getElementById('login-section').style.display = 'none';
+                    document.getElementById('clusters-section').style.display = 'block';
+                } else {
+                    showError(result.error || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                showError('Connection failed: ' + error.message + ' - Check that server is running on port 3000');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.querySelector('.btn').disabled = false;
+            }
+        });
+
+        async function archiveCluster(clusterId) {
+            try {
+                const response = await fetch('/archive_cluster', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cluster_id: clusterId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Remove the cluster from display
+                    document.getElementById(`cluster-${clusterId}`).remove();
+                    showSuccess(result.message);
+                    
+                    // Update current clusters
+                    currentClusters = currentClusters.filter(c => c.id !== clusterId);
+                    
+                    if (currentClusters.length === 0) {
+                        document.getElementById('clusters-list').innerHTML = 
+                            '<div class="cluster"><div class="cluster-header"><div class="cluster-title">✅ All Done!</div><div class="cluster-description">No more emails to triage</div></div></div>';
+                    }
+                } else {
+                    showError(result.error || 'Archive failed');
+                }
+            } catch (error) {
+                showError('Archive failed: ' + error.message);
+            }
+        }
+
+        function displayClusters(clusters) {
+            const container = document.getElementById('clusters-list');
+            container.innerHTML = '';
+            
+            clusters.forEach(cluster => {
+                const clusterDiv = document.createElement('div');
+                clusterDiv.className = 'cluster';
+                clusterDiv.id = `cluster-${cluster.id}`;
+                
+                let emailsHtml = '';
+                cluster.emails.slice(0, 10).forEach(email => {
+                    const senderShort = email.sender.split('<')[0].trim().substring(0, 25);
+                    const subjectShort = email.subject.length > 40 ? 
+                        email.subject.substring(0, 40) + '...' : email.subject;
+                    const previewShort = email.preview.length > 30 ? 
+                        email.preview.substring(0, 30) + '...' : email.preview;
+                    
+                    emailsHtml += `
+                        <tr>
+                            <td class="sender">${senderShort}</td>
+                            <td class="subject">${subjectShort}</td>
+                            <td>${email.date}</td>
+                            <td class="preview">${previewShort}</td>
+                        </tr>
+                    `;
+                });
+                
+                if (cluster.emails.length > 10) {
+                    emailsHtml += `<tr><td colspan="4" style="text-align: center; color: #666;">+ ${cluster.emails.length - 10} more emails</td></tr>`;
+                }
+                
+                clusterDiv.innerHTML = `
+                    <div class="cluster-header">
+                        <div>
+                            <div class="cluster-title">${cluster.name}</div>
+                            <div class="cluster-description">${cluster.description}</div>
+                            ${cluster.keywords.length > 0 ? `<div style="margin-top: 5px; color: #007bff; font-size: 12px;">Keywords: ${cluster.keywords.join(', ')}</div>` : ''}
+                        </div>
+                        <button class="archive-btn" onclick="archiveCluster(${cluster.id})">
+                            🗂️ Archive All (${cluster.email_count})
+                        </button>
+                    </div>
+                    <table class="emails-table">
+                        <thead>
+                            <tr>
+                                <th>From</th>
+                                <th>Subject</th>
+                                <th>Date</th>
+                                <th>Preview</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${emailsHtml}
+                        </tbody>
+                    </table>
+                `;
+                
+                container.appendChild(clusterDiv);
+            });
+        }
+
+        document.getElementById('disconnect-btn').addEventListener('click', async () => {
+            try {
+                await fetch('/disconnect', { method: 'POST' });
+                location.reload();
+            } catch (error) {
+                console.error('Disconnect failed:', error);
+                location.reload();
+            }
+        });
+
+        function showError(message) {
+            document.getElementById('error-message').innerHTML = 
+                `<div class="error">❌ ${message}</div>`;
+        }
+
+        function showSuccess(message) {
+            const container = document.getElementById('clusters-list');
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success';
+            successDiv.innerHTML = `✅ ${message}`;
+            container.insertBefore(successDiv, container.firstChild);
+            setTimeout(() => successDiv.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

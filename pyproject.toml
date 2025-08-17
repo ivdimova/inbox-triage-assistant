@@ -1,0 +1,20 @@
+[project]
+name = "inbox-triage"
+version = "0.1.0"
+description = "Gmail inbox triage assistant with email clustering"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.2.1",
+    "flask>=3.1.1",
+    "flask-cors>=6.0.1",
+    "imaplib2>=3.6",
+    "pandas>=2.3.1",
+    "python-dotenv>=1.1.1",
+    "rich>=14.1.0",
+    "scikit-learn>=1.7.1",
+]
+
+[project.scripts]
+inbox-triage = "inbox_triage.main:main"
+inbox-triage-web = "inbox_triage.web_app:app"
