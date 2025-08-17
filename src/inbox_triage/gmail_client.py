@@ -59,8 +59,8 @@ class GmailClient:
         
         try:
             print(f"Searching for emails in inbox...")
-            # Set a reasonable timeout
-            self.connection.sock.settimeout(30)
+            # Set a longer timeout for Vercel
+            self.connection.sock.settimeout(60)
             # Search for all emails in inbox
             _, message_numbers = self.connection.search(None, "ALL")
             message_list = message_numbers[0].split()
@@ -73,10 +73,18 @@ class GmailClient:
             
             emails = []
             for i, num in enumerate(reversed(recent_messages)):  # Most recent first
-                if i % 50 == 0:  # Progress update every 50 emails
+                if i % 25 == 0:  # Progress update every 25 emails
                     print(f"Processed {i}/{len(recent_messages)} emails...")
-                _, data = self.connection.fetch(num, "(RFC822)")
-                email_body = data[0][1]
+                
+                # Fetch with lighter payload for speed
+                _, data = self.connection.fetch(num, "(BODY.PEEK[HEADER] BODY.PEEK[TEXT])")
+                if not data or not data[0]:
+                    continue
+                    
+                email_body = data[0][1] if isinstance(data[0], tuple) else data[0]
+                if not email_body:
+                    continue
+                    
                 email_message = email.message_from_bytes(email_body)
                 
                 # Extract email details
