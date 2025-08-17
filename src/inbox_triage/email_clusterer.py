@@ -4,11 +4,6 @@ import re
 from typing import List, Dict, Set
 from dataclasses import dataclass
 from collections import Counter
-import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import KMeans
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
 
 from .gmail_client import EmailMessage
 
@@ -28,56 +23,15 @@ class EmailClusterer:
     
     def __init__(self, min_cluster_size: int = 3):
         self.min_cluster_size = min_cluster_size
-        self.vectorizer = TfidfVectorizer(
-            max_features=1000,
-            stop_words="english",
-            ngram_range=(1, 2),
-            min_df=2
-        )
     
     def cluster_emails(self, emails: List[EmailMessage], 
                       num_clusters: int = 5) -> List[EmailCluster]:
-        """Cluster emails into actionable groups."""
+        """Cluster emails into actionable groups using rule-based approach."""
         if len(emails) < self.min_cluster_size:
             return [self._create_single_cluster(emails)]
         
-        # Create feature matrix from email content
-        email_texts = self._prepare_email_texts(emails)
-        
-        try:
-            # Vectorize email content
-            tfidf_matrix = self.vectorizer.fit_transform(email_texts)
-            
-            # Perform clustering
-            kmeans = KMeans(n_clusters=min(num_clusters, len(emails)), 
-                          random_state=42, n_init=10)
-            cluster_labels = kmeans.fit_predict(tfidf_matrix)
-            
-            # Group emails by cluster
-            clusters = self._group_emails_by_cluster(emails, cluster_labels)
-            
-            # Generate descriptive names and keywords
-            named_clusters = []
-            for cluster_id, cluster_emails in clusters.items():
-                if len(cluster_emails) >= self.min_cluster_size:
-                    cluster_info = self._analyze_cluster(cluster_emails, cluster_id)
-                    named_clusters.append(cluster_info)
-            
-            # Handle small clusters
-            small_cluster_emails = []
-            for cluster_id, cluster_emails in clusters.items():
-                if len(cluster_emails) < self.min_cluster_size:
-                    small_cluster_emails.extend(cluster_emails)
-            
-            if small_cluster_emails:
-                misc_cluster = self._create_miscellaneous_cluster(small_cluster_emails)
-                named_clusters.append(misc_cluster)
-            
-            return named_clusters
-            
-        except Exception as e:
-            # Fallback to rule-based clustering
-            return self._fallback_clustering(emails)
+        # Use lightweight rule-based clustering instead of ML
+        return self._rule_based_clustering(emails)
     
     def _prepare_email_texts(self, emails: List[EmailMessage]) -> List[str]:
         """Prepare email content for vectorization."""
@@ -190,7 +144,7 @@ class EmailClusterer:
             keywords=[]
         )
     
-    def _fallback_clustering(self, emails: List[EmailMessage]) -> List[EmailCluster]:
+    def _rule_based_clustering(self, emails: List[EmailMessage]) -> List[EmailCluster]:
         """Simple rule-based clustering as fallback."""
         domain_groups = {}
         
